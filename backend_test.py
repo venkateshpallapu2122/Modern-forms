@@ -725,6 +725,8 @@ class SurveyAPITester:
                 self.log_result('response_analytics', 'Analytics with No Responses', False, f"Could not create empty survey: {response.status_code}")
         except Exception as e:
             self.log_result('response_analytics', 'Analytics with No Responses', False, str(e))
+
+    def cleanup_test_data(self):
         print("\n=== Cleaning up test data ===")
         
         # Delete created surveys (this will also test delete functionality)
