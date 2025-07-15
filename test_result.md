@@ -252,10 +252,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Survey CRUD APIs"
-    - "Template System"
-    - "Response Collection System"
-    - "Question Types Support"
+    - "Enhanced Response Endpoints with Grid View Features"
+    - "Response Analytics Endpoint"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
