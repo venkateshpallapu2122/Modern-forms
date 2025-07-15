@@ -476,6 +476,343 @@ const SurveyResponse = ({ survey, onSubmit }) => {
   );
 };
 
+// Grid View Component for Survey Responses
+const ResponseGridView = ({ survey, responses, onRefresh }) => {
+  const [sortBy, setSortBy] = useState('submitted_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [filterText, setFilterText] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [stats, setStats] = useState(null);
+  const [selectedResponses, setSelectedResponses] = useState([]);
+
+  useEffect(() => {
+    loadResponseStats();
+  }, [survey.id]);
+
+  const loadResponseStats = async () => {
+    try {
+      const response = await axios.get(`${API}/surveys/${survey.id}/responses/stats`);
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error loading response stats:', error);
+    }
+  };
+
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  const handleSelectResponse = (responseId) => {
+    setSelectedResponses(prev => 
+      prev.includes(responseId) 
+        ? prev.filter(id => id !== responseId)
+        : [...prev, responseId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedResponses.length === filteredResponses.length) {
+      setSelectedResponses([]);
+    } else {
+      setSelectedResponses(filteredResponses.map(r => r.id));
+    }
+  };
+
+  const exportToCSV = () => {
+    const csvData = filteredResponses.map(response => {
+      const row = {
+        'Response ID': response.id,
+        'Submitted At': new Date(response.submitted_at).toLocaleString()
+      };
+      
+      survey.questions.forEach(question => {
+        const answer = response.responses[question.id];
+        row[question.title] = Array.isArray(answer) ? answer.join(', ') : (answer || 'No response');
+      });
+      
+      return row;
+    });
+
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${survey.title}_responses.csv`;
+    a.click();
+  };
+
+  const filteredResponses = responses.filter(response => {
+    if (!filterText) return true;
+    
+    const searchText = filterText.toLowerCase();
+    return survey.questions.some(question => {
+      const answer = response.responses[question.id];
+      const answerText = Array.isArray(answer) ? answer.join(' ') : (answer || '');
+      return answerText.toString().toLowerCase().includes(searchText);
+    });
+  });
+
+  const sortedResponses = [...filteredResponses].sort((a, b) => {
+    let aValue = a[sortBy];
+    let bValue = b[sortBy];
+    
+    if (sortBy === 'submitted_at') {
+      aValue = new Date(aValue);
+      bValue = new Date(bValue);
+    }
+    
+    if (sortOrder === 'asc') {
+      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+    } else {
+      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+    }
+  });
+
+  const paginatedResponses = sortedResponses.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPages = Math.ceil(sortedResponses.length / itemsPerPage);
+
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <span className="text-gray-400">⏸</span>;
+    return sortOrder === 'asc' ? <span className="text-blue-500">▲</span> : <span className="text-blue-500">▼</span>;
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      {/* Stats Dashboard */}
+      {stats && (
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{stats.total_responses}</div>
+            <div className="text-sm text-gray-600">Total Responses</div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">
+              {stats.total_responses > 0 ? Math.round(Object.values(stats.question_stats).reduce((acc, q) => acc + q.completion_rate, 0) / Object.keys(stats.question_stats).length) : 0}%
+            </div>
+            <div className="text-sm text-gray-600">Avg Completion Rate</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600">{survey.questions.length}</div>
+            <div className="text-sm text-gray-600">Questions</div>
+          </div>
+          <div className="bg-orange-50 p-4 rounded-lg">
+            <div className="text-2xl font-bold text-orange-600">
+              {stats.total_responses > 0 ? Math.round(stats.total_responses / 7) : 0}
+            </div>
+            <div className="text-sm text-gray-600">Avg per Week</div>
+          </div>
+        </div>
+      )}
+
+      {/* Controls */}
+      <div className="mb-6 flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <input
+            type="text"
+            placeholder="Filter responses..."
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            value={itemsPerPage}
+            onChange={(e) => setItemsPerPage(parseInt(e.target.value))}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value={10}>10 per page</option>
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
+          </select>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={exportToCSV}
+            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center space-x-2"
+          >
+            <span>📊</span>
+            <span>Export CSV</span>
+          </button>
+          <button
+            onClick={onRefresh}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center space-x-2"
+          >
+            <span>🔄</span>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Grid Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="border border-gray-200 p-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={selectedResponses.length === filteredResponses.length && filteredResponses.length > 0}
+                  onChange={handleSelectAll}
+                  className="mr-2"
+                />
+                Select
+              </th>
+              <th 
+                className="border border-gray-200 p-3 text-left cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('submitted_at')}
+              >
+                <div className="flex items-center space-x-2">
+                  <span>Submitted At</span>
+                  <SortIcon column="submitted_at" />
+                </div>
+              </th>
+              {survey.questions.map(question => (
+                <th key={question.id} className="border border-gray-200 p-3 text-left">
+                  <div className="max-w-32 truncate" title={question.title}>
+                    {question.title}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {question.type}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedResponses.map((response, index) => (
+              <tr key={response.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border border-gray-200 p-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedResponses.includes(response.id)}
+                    onChange={() => handleSelectResponse(response.id)}
+                    className="mr-2"
+                  />
+                  <span className="text-xs text-gray-500">#{index + 1}</span>
+                </td>
+                <td className="border border-gray-200 p-3">
+                  <div className="text-sm">
+                    {new Date(response.submitted_at).toLocaleDateString()}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(response.submitted_at).toLocaleTimeString()}
+                  </div>
+                </td>
+                {survey.questions.map(question => {
+                  const answer = response.responses[question.id];
+                  return (
+                    <td key={question.id} className="border border-gray-200 p-3">
+                      <div className="max-w-48 truncate" title={Array.isArray(answer) ? answer.join(', ') : (answer || 'No response')}>
+                        {Array.isArray(answer) ? (
+                          <div className="flex flex-wrap gap-1">
+                            {answer.map((item, i) => (
+                              <span key={i} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        ) : question.type === 'rating' ? (
+                          <div className="flex items-center">
+                            <span className="text-lg">⭐</span>
+                            <span className="ml-1">{answer || 'No rating'}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm">{answer || 'No response'}</span>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedResponses.length)} of {sortedResponses.length} responses
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Previous
+            </button>
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 border border-gray-300 rounded-md ${
+                  currentPage === i + 1 
+                    ? 'bg-blue-500 text-white border-blue-500' 
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Actions */}
+      {selectedResponses.length > 0 && (
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-blue-700">
+              {selectedResponses.length} responses selected
+            </span>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  const selectedData = responses.filter(r => selectedResponses.includes(r.id));
+                  console.log('Selected responses:', selectedData);
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+              >
+                Analyze Selected
+              </button>
+              <button
+                onClick={() => setSelectedResponses([])}
+                className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Main App Component
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -484,6 +821,7 @@ function App() {
   const [selectedSurvey, setSelectedSurvey] = useState(null);
   const [editingSurvey, setEditingSurvey] = useState(null);
   const [surveyResponses, setSurveyResponses] = useState([]);
+  const [responseViewMode, setResponseViewMode] = useState('grid'); // 'grid' or 'list'
 
   useEffect(() => {
     initializeApp();
@@ -637,7 +975,7 @@ function App() {
                 }}
                 className="px-3 py-1 bg-purple-500 text-white rounded text-sm hover:bg-purple-600"
               >
-                Responses
+                Analytics
               </button>
               <button
                 onClick={() => handleDeleteSurvey(survey.id)}
@@ -696,48 +1034,74 @@ function App() {
   );
 
   const renderResponses = () => (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          Survey Responses: {selectedSurvey?.title}
+          Survey Analytics: {selectedSurvey?.title}
         </h1>
-        <button
-          onClick={() => setCurrentView('dashboard')}
-          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-        >
-          Back to Dashboard
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setCurrentView('dashboard')}
+            className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+          >
+            Back to Dashboard
+          </button>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">View:</span>
+              <select
+                value={responseViewMode}
+                onChange={(e) => setResponseViewMode(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="grid">Grid View</option>
+                <option value="list">List View</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {surveyResponses.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No responses yet.</p>
-        </div>
+      {responseViewMode === 'grid' ? (
+        <ResponseGridView 
+          survey={selectedSurvey} 
+          responses={surveyResponses} 
+          onRefresh={() => loadSurveyResponses(selectedSurvey.id)}
+        />
       ) : (
-        <div className="space-y-6">
-          {surveyResponses.map((response, index) => (
-            <div key={response.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold">Response #{index + 1}</h3>
-                <p className="text-sm text-gray-500">
-                  Submitted: {new Date(response.submitted_at).toLocaleString()}
-                </p>
-              </div>
-              <div className="space-y-4">
-                {selectedSurvey?.questions.map((question) => (
-                  <div key={question.id} className="border-l-4 border-blue-500 pl-4">
-                    <h4 className="font-medium text-gray-900">{question.title}</h4>
-                    <p className="text-gray-700 mt-1">
-                      {Array.isArray(response.responses[question.id]) 
-                        ? response.responses[question.id].join(', ')
-                        : response.responses[question.id] || 'No response'
-                      }
+        // Original list view for comparison
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          {surveyResponses.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No responses yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {surveyResponses.map((response, index) => (
+                <div key={response.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold">Response #{index + 1}</h3>
+                    <p className="text-sm text-gray-500">
+                      Submitted: {new Date(response.submitted_at).toLocaleString()}
                     </p>
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-4">
+                    {selectedSurvey?.questions.map((question) => (
+                      <div key={question.id} className="border-l-4 border-blue-500 pl-4">
+                        <h4 className="font-medium text-gray-900">{question.title}</h4>
+                        <p className="text-gray-700 mt-1">
+                          {Array.isArray(response.responses[question.id]) 
+                            ? response.responses[question.id].join(', ')
+                            : response.responses[question.id] || 'No response'
+                          }
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
