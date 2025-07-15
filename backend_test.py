@@ -754,6 +754,8 @@ class SurveyAPITester:
         self.test_template_system()
         self.test_response_collection_system()
         self.test_question_types_support()
+        self.test_enhanced_response_endpoints()
+        self.test_response_analytics_endpoint()
         self.cleanup_test_data()
         
         return True
