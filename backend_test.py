@@ -402,7 +402,329 @@ class SurveyAPITester:
         except Exception as e:
             self.log_result('question_types', 'Question Options Validation', False, str(e))
 
-    def cleanup_test_data(self):
+    def test_enhanced_response_endpoints(self):
+        print("\n=== Testing Enhanced Response Endpoints (Grid View Features) ===")
+        
+        if not self.created_surveys:
+            self.log_result('enhanced_responses', 'Enhanced Response Tests', False, "No surveys available for testing")
+            return
+
+        survey_id = self.created_surveys[0]
+        
+        # Create multiple responses for pagination testing
+        response_data_list = [
+            {
+                "survey_id": survey_id,
+                "responses": {
+                    "question_1": "Alice Smith",
+                    "question_2": "very_satisfied",
+                    "question_3": 5
+                }
+            },
+            {
+                "survey_id": survey_id,
+                "responses": {
+                    "question_1": "Bob Johnson",
+                    "question_2": "satisfied",
+                    "question_3": 4
+                }
+            },
+            {
+                "survey_id": survey_id,
+                "responses": {
+                    "question_1": "Carol Davis",
+                    "question_2": "neutral",
+                    "question_3": 3
+                }
+            },
+            {
+                "survey_id": survey_id,
+                "responses": {
+                    "question_1": "David Wilson",
+                    "question_2": "dissatisfied",
+                    "question_3": 2
+                }
+            },
+            {
+                "survey_id": survey_id,
+                "responses": {
+                    "question_1": "Eva Brown",
+                    "question_2": "very_satisfied",
+                    "question_3": 5
+                }
+            }
+        ]
+        
+        # Submit multiple responses
+        for i, response_data in enumerate(response_data_list):
+            try:
+                response = self.session.post(f"{API_BASE}/responses", json=response_data)
+                if response.status_code == 200:
+                    response_obj = response.json()
+                    self.created_responses.append(response_obj['id'])
+                else:
+                    self.log_result('enhanced_responses', f'Submit Test Response {i+1}', False, f"Status: {response.status_code}")
+            except Exception as e:
+                self.log_result('enhanced_responses', f'Submit Test Response {i+1}', False, str(e))
+        
+        # Test 1: Basic Enhanced GET with default parameters
+        try:
+            response = self.session.get(f"{API_BASE}/surveys/{survey_id}/responses")
+            if response.status_code == 200:
+                responses = response.json()
+                if isinstance(responses, list) and len(responses) >= 5:
+                    self.log_result('enhanced_responses', 'Enhanced GET Responses (Default)', True)
+                else:
+                    self.log_result('enhanced_responses', 'Enhanced GET Responses (Default)', False, f"Expected at least 5 responses, got {len(responses) if isinstance(responses, list) else 0}")
+            else:
+                self.log_result('enhanced_responses', 'Enhanced GET Responses (Default)', False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result('enhanced_responses', 'Enhanced GET Responses (Default)', False, str(e))
+
+        # Test 2: Pagination - Page 1 with limit 3
+        try:
+            response = self.session.get(f"{API_BASE}/surveys/{survey_id}/responses?page=1&limit=3")
+            if response.status_code == 200:
+                responses = response.json()
+                if isinstance(responses, list) and len(responses) == 3:
+                    self.log_result('enhanced_responses', 'Pagination (Page 1, Limit 3)', True)
+                else:
+                    self.log_result('enhanced_responses', 'Pagination (Page 1, Limit 3)', False, f"Expected 3 responses, got {len(responses) if isinstance(responses, list) else 0}")
+            else:
+                self.log_result('enhanced_responses', 'Pagination (Page 1, Limit 3)', False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result('enhanced_responses', 'Pagination (Page 1, Limit 3)', False, str(e))
+
+        # Test 3: Pagination - Page 2 with limit 3
+        try:
+            response = self.session.get(f"{API_BASE}/surveys/{survey_id}/responses?page=2&limit=3")
+            if response.status_code == 200:
+                responses = response.json()
+                if isinstance(responses, list) and len(responses) >= 2:  # Should have at least 2 more responses
+                    self.log_result('enhanced_responses', 'Pagination (Page 2, Limit 3)', True)
+                else:
+                    self.log_result('enhanced_responses', 'Pagination (Page 2, Limit 3)', False, f"Expected at least 2 responses on page 2, got {len(responses) if isinstance(responses, list) else 0}")
+            else:
+                self.log_result('enhanced_responses', 'Pagination (Page 2, Limit 3)', False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result('enhanced_responses', 'Pagination (Page 2, Limit 3)', False, str(e))
+
+        # Test 4: Sorting - Ascending by submitted_at
+        try:
+            response = self.session.get(f"{API_BASE}/surveys/{survey_id}/responses?sort_by=submitted_at&sort_order=asc")
+            if response.status_code == 200:
+                responses = response.json()
+                if isinstance(responses, list) and len(responses) >= 2:
+                    # Check if responses are sorted by submitted_at in ascending order
+                    timestamps = [resp['submitted_at'] for resp in responses]
+                    is_sorted = all(timestamps[i] <= timestamps[i+1] for i in range(len(timestamps)-1))
+                    if is_sorted:
+                        self.log_result('enhanced_responses', 'Sorting (Ascending by submitted_at)', True)
+                    else:
+                        self.log_result('enhanced_responses', 'Sorting (Ascending by submitted_at)', False, "Responses not properly sorted")
+                else:
+                    self.log_result('enhanced_responses', 'Sorting (Ascending by submitted_at)', False, "Not enough responses to test sorting")
+            else:
+                self.log_result('enhanced_responses', 'Sorting (Ascending by submitted_at)', False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result('enhanced_responses', 'Sorting (Ascending by submitted_at)', False, str(e))
+
+        # Test 5: Sorting - Descending by submitted_at (default)
+        try:
+            response = self.session.get(f"{API_BASE}/surveys/{survey_id}/responses?sort_by=submitted_at&sort_order=desc")
+            if response.status_code == 200:
+                responses = response.json()
+                if isinstance(responses, list) and len(responses) >= 2:
+                    # Check if responses are sorted by submitted_at in descending order
+                    timestamps = [resp['submitted_at'] for resp in responses]
+                    is_sorted = all(timestamps[i] >= timestamps[i+1] for i in range(len(timestamps)-1))
+                    if is_sorted:
+                        self.log_result('enhanced_responses', 'Sorting (Descending by submitted_at)', True)
+                    else:
+                        self.log_result('enhanced_responses', 'Sorting (Descending by submitted_at)', False, "Responses not properly sorted")
+                else:
+                    self.log_result('enhanced_responses', 'Sorting (Descending by submitted_at)', False, "Not enough responses to test sorting")
+            else:
+                self.log_result('enhanced_responses', 'Sorting (Descending by submitted_at)', False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result('enhanced_responses', 'Sorting (Descending by submitted_at)', False, str(e))
+
+        # Test 6: Combined Pagination and Sorting
+        try:
+            response = self.session.get(f"{API_BASE}/surveys/{survey_id}/responses?page=1&limit=2&sort_by=submitted_at&sort_order=asc")
+            if response.status_code == 200:
+                responses = response.json()
+                if isinstance(responses, list) and len(responses) == 2:
+                    # Check if responses are sorted and limited correctly
+                    timestamps = [resp['submitted_at'] for resp in responses]
+                    is_sorted = all(timestamps[i] <= timestamps[i+1] for i in range(len(timestamps)-1))
+                    if is_sorted:
+                        self.log_result('enhanced_responses', 'Combined Pagination and Sorting', True)
+                    else:
+                        self.log_result('enhanced_responses', 'Combined Pagination and Sorting', False, "Responses not properly sorted with pagination")
+                else:
+                    self.log_result('enhanced_responses', 'Combined Pagination and Sorting', False, f"Expected 2 responses, got {len(responses) if isinstance(responses, list) else 0}")
+            else:
+                self.log_result('enhanced_responses', 'Combined Pagination and Sorting', False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result('enhanced_responses', 'Combined Pagination and Sorting', False, str(e))
+
+    def test_response_analytics_endpoint(self):
+        print("\n=== Testing Response Analytics Endpoint ===")
+        
+        if not self.created_surveys:
+            self.log_result('response_analytics', 'Response Analytics Tests', False, "No surveys available for testing")
+            return
+
+        survey_id = self.created_surveys[0]
+        
+        # Test 1: Get Response Statistics
+        try:
+            response = self.session.get(f"{API_BASE}/surveys/{survey_id}/responses/stats")
+            if response.status_code == 200:
+                stats = response.json()
+                
+                # Verify basic structure
+                required_fields = ['total_responses', 'survey_title', 'question_stats']
+                if all(field in stats for field in required_fields):
+                    self.log_result('response_analytics', 'Get Response Statistics (Basic Structure)', True)
+                else:
+                    missing_fields = [field for field in required_fields if field not in stats]
+                    self.log_result('response_analytics', 'Get Response Statistics (Basic Structure)', False, f"Missing fields: {missing_fields}")
+                    return
+                
+                # Verify total responses count
+                if isinstance(stats['total_responses'], int) and stats['total_responses'] >= 5:
+                    self.log_result('response_analytics', 'Total Responses Count', True)
+                else:
+                    self.log_result('response_analytics', 'Total Responses Count', False, f"Expected at least 5 responses, got {stats['total_responses']}")
+                
+                # Verify survey title
+                if isinstance(stats['survey_title'], str) and len(stats['survey_title']) > 0:
+                    self.log_result('response_analytics', 'Survey Title in Stats', True)
+                else:
+                    self.log_result('response_analytics', 'Survey Title in Stats', False, "Survey title missing or invalid")
+                
+                # Verify question stats structure
+                question_stats = stats.get('question_stats', {})
+                if isinstance(question_stats, dict) and len(question_stats) > 0:
+                    self.log_result('response_analytics', 'Question Stats Structure', True)
+                    
+                    # Test question-wise completion rates
+                    completion_rates_valid = True
+                    for question_id, q_stats in question_stats.items():
+                        required_q_fields = ['question_title', 'question_type', 'answered_count', 'completion_rate']
+                        if not all(field in q_stats for field in required_q_fields):
+                            completion_rates_valid = False
+                            break
+                        
+                        # Check completion rate is a valid percentage
+                        if not (0 <= q_stats['completion_rate'] <= 100):
+                            completion_rates_valid = False
+                            break
+                    
+                    if completion_rates_valid:
+                        self.log_result('response_analytics', 'Question-wise Completion Rates', True)
+                    else:
+                        self.log_result('response_analytics', 'Question-wise Completion Rates', False, "Invalid completion rate data")
+                    
+                    # Test option distribution for multiple choice questions
+                    mc_question_found = False
+                    option_distribution_valid = True
+                    for question_id, q_stats in question_stats.items():
+                        if q_stats.get('question_type') == 'multiple_choice':
+                            mc_question_found = True
+                            option_dist = q_stats.get('option_distribution', {})
+                            if not isinstance(option_dist, dict):
+                                option_distribution_valid = False
+                                break
+                            
+                            # Check if we have valid option counts
+                            for option, count in option_dist.items():
+                                if not isinstance(count, int) or count < 0:
+                                    option_distribution_valid = False
+                                    break
+                    
+                    if mc_question_found and option_distribution_valid:
+                        self.log_result('response_analytics', 'Option Distribution for Multiple Choice', True)
+                    elif not mc_question_found:
+                        self.log_result('response_analytics', 'Option Distribution for Multiple Choice', False, "No multiple choice questions found")
+                    else:
+                        self.log_result('response_analytics', 'Option Distribution for Multiple Choice', False, "Invalid option distribution data")
+                    
+                    # Test average ratings for rating questions
+                    rating_question_found = False
+                    average_rating_valid = True
+                    for question_id, q_stats in question_stats.items():
+                        if q_stats.get('question_type') == 'rating':
+                            rating_question_found = True
+                            avg_rating = q_stats.get('average_rating')
+                            if avg_rating is not None:
+                                if not isinstance(avg_rating, (int, float)) or avg_rating < 1 or avg_rating > 5:
+                                    average_rating_valid = False
+                                    break
+                    
+                    if rating_question_found and average_rating_valid:
+                        self.log_result('response_analytics', 'Average Ratings for Rating Questions', True)
+                    elif not rating_question_found:
+                        self.log_result('response_analytics', 'Average Ratings for Rating Questions', False, "No rating questions found")
+                    else:
+                        self.log_result('response_analytics', 'Average Ratings for Rating Questions', False, "Invalid average rating data")
+                        
+                else:
+                    self.log_result('response_analytics', 'Question Stats Structure', False, "Question stats missing or invalid")
+                    
+            else:
+                self.log_result('response_analytics', 'Get Response Statistics', False, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_result('response_analytics', 'Get Response Statistics', False, str(e))
+
+        # Test 2: Analytics for Non-existent Survey
+        try:
+            fake_survey_id = str(uuid.uuid4())
+            response = self.session.get(f"{API_BASE}/surveys/{fake_survey_id}/responses/stats")
+            if response.status_code == 404:
+                self.log_result('response_analytics', 'Analytics for Non-existent Survey (404 Error)', True)
+            else:
+                self.log_result('response_analytics', 'Analytics for Non-existent Survey (404 Error)', False, f"Expected 404, got {response.status_code}")
+        except Exception as e:
+            self.log_result('response_analytics', 'Analytics for Non-existent Survey (404 Error)', False, str(e))
+
+        # Test 3: Analytics with No Responses
+        # Create a new survey with no responses
+        empty_survey_data = {
+            "title": "Empty Survey for Analytics Test",
+            "description": "Testing analytics with no responses",
+            "questions": [
+                {
+                    "type": "text",
+                    "title": "Test question",
+                    "required": True
+                }
+            ]
+        }
+        
+        try:
+            response = self.session.post(f"{API_BASE}/surveys", json=empty_survey_data)
+            if response.status_code == 200:
+                empty_survey = response.json()
+                empty_survey_id = empty_survey['id']
+                self.created_surveys.append(empty_survey_id)
+                
+                # Get analytics for empty survey
+                response = self.session.get(f"{API_BASE}/surveys/{empty_survey_id}/responses/stats")
+                if response.status_code == 200:
+                    stats = response.json()
+                    if stats.get('total_responses') == 0:
+                        self.log_result('response_analytics', 'Analytics with No Responses', True)
+                    else:
+                        self.log_result('response_analytics', 'Analytics with No Responses', False, f"Expected 0 responses, got {stats.get('total_responses')}")
+                else:
+                    self.log_result('response_analytics', 'Analytics with No Responses', False, f"Status: {response.status_code}")
+            else:
+                self.log_result('response_analytics', 'Analytics with No Responses', False, f"Could not create empty survey: {response.status_code}")
+        except Exception as e:
+            self.log_result('response_analytics', 'Analytics with No Responses', False, str(e))
         print("\n=== Cleaning up test data ===")
         
         # Delete created surveys (this will also test delete functionality)
