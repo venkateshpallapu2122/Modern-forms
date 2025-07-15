@@ -1,38 +1,255 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
 .App {
-    text-align: center;
+  min-height: 100vh;
+  background-color: #f9fafb;
 }
 
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Form animations */
+.form-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Survey response success animation */
+.success-animation {
+  animation: successPulse 0.5s ease-in-out;
+}
+
+@keyframes successPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Question builder animations */
+.question-builder {
+  transition: all 0.3s ease;
+}
+
+.question-builder:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Rating button hover effects */
+.rating-button {
+  transition: all 0.2s ease;
+}
+
+.rating-button:hover {
+  transform: scale(1.1);
+}
+
+/* Survey card hover effects */
+.survey-card {
+  transition: all 0.3s ease;
+}
+
+.survey-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom button styles */
+.btn-primary {
+  @apply px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors;
+}
+
+.btn-secondary {
+  @apply px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors;
+}
+
+.btn-success {
+  @apply px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors;
+}
+
+.btn-danger {
+  @apply px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors;
+}
+
+/* Form input focus styles */
+.form-input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all;
+}
+
+.form-textarea {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none;
+}
+
+/* Survey template card styles */
+.template-card {
+  @apply bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer;
+}
+
+/* Response display styles */
+.response-item {
+  @apply border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded-r-md;
+}
+
+/* Loading states */
+.loading-spinner {
+  @apply animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .survey-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .question-builder {
+    padding: 1rem;
+  }
+  
+  .btn-group {
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+    gap: 0.5rem;
+  }
 }
 
-.App-link {
-    color: #61dafb;
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .App {
+    background-color: #1f2937;
+    color: #f9fafb;
+  }
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+/* Custom utility classes */
+.text-gradient {
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.shadow-custom {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.border-dashed-custom {
+  border: 2px dashed #d1d5db;
+  border-radius: 0.5rem;
+}
+
+/* Survey response form styles */
+.survey-form {
+  @apply space-y-6 bg-white p-6 rounded-lg shadow-sm;
+}
+
+.question-container {
+  @apply mb-6 p-4 bg-gray-50 rounded-lg;
+}
+
+.question-title {
+  @apply text-lg font-medium text-gray-900 mb-2;
+}
+
+.question-description {
+  @apply text-sm text-gray-600 mb-3;
+}
+
+.required-indicator {
+  @apply text-red-500 ml-1;
+}
+
+/* Option styling for multiple choice and checkboxes */
+.option-container {
+  @apply space-y-2;
+}
+
+.option-item {
+  @apply flex items-center p-2 rounded hover:bg-gray-50 transition-colors;
+}
+
+.option-input {
+  @apply mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500;
+}
+
+.option-label {
+  @apply text-gray-700 cursor-pointer;
+}
+
+/* Rating scale styling */
+.rating-container {
+  @apply flex space-x-2 justify-center;
+}
+
+.rating-item {
+  @apply w-10 h-10 rounded-full border-2 flex items-center justify-center font-semibold cursor-pointer transition-all;
+}
+
+.rating-item:hover {
+  @apply border-blue-300 bg-blue-50;
+}
+
+.rating-item.selected {
+  @apply bg-blue-500 text-white border-blue-500;
+}
+
+.rating-item.unselected {
+  @apply border-gray-300 text-gray-700 hover:border-blue-300;
+}
+
+/* Survey management styles */
+.survey-management {
+  @apply bg-white rounded-lg shadow-sm p-6;
+}
+
+.survey-stats {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-4 mb-6;
+}
+
+.stat-item {
+  @apply bg-blue-50 p-4 rounded-lg text-center;
+}
+
+.stat-number {
+  @apply text-2xl font-bold text-blue-600;
+}
+
+.stat-label {
+  @apply text-sm text-gray-600;
+}
+
+/* Empty state styles */
+.empty-state {
+  @apply text-center py-12;
+}
+
+.empty-state-icon {
+  @apply mx-auto h-12 w-12 text-gray-400 mb-4;
+}
+
+.empty-state-title {
+  @apply text-lg font-medium text-gray-900 mb-2;
+}
+
+.empty-state-description {
+  @apply text-gray-500;
 }
