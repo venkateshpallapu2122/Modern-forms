@@ -38,7 +38,9 @@ class SurveyAPITester:
             'survey_crud': {'passed': 0, 'failed': 0, 'errors': []},
             'template_system': {'passed': 0, 'failed': 0, 'errors': []},
             'response_collection': {'passed': 0, 'failed': 0, 'errors': []},
-            'question_types': {'passed': 0, 'failed': 0, 'errors': []}
+            'question_types': {'passed': 0, 'failed': 0, 'errors': []},
+            'enhanced_responses': {'passed': 0, 'failed': 0, 'errors': []},
+            'response_analytics': {'passed': 0, 'failed': 0, 'errors': []}
         }
         self.created_surveys = []
         self.created_responses = []
