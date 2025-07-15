@@ -165,6 +165,36 @@ backend:
         agent: "testing"
         comment: "✅ ALL QUESTION TYPES TESTS PASSED (5/5): Successfully tested all question types (text, email, multiple_choice, checkbox, rating) with comprehensive validation. Multiple choice and checkbox questions properly store and retrieve options with text/value pairs. Rating questions correctly handle min/max rating bounds (tested 1-10 range). All question types can be created, stored, and used in surveys with proper data persistence and response handling."
 
+  - task: "Enhanced Response Endpoints with Grid View Features"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced GET /api/surveys/{id}/responses endpoint with pagination (page, limit) and sorting (sort_by, sort_order) parameters to support grid view functionality"
+      - working: true
+        agent: "testing"
+        comment: "✅ ALL ENHANCED RESPONSE ENDPOINT TESTS PASSED (6/6): Successfully tested enhanced GET /api/surveys/{id}/responses with pagination and sorting. Pagination works correctly with page/limit parameters (tested page 1 & 2 with limit 3). Sorting functionality verified for both ascending and descending order by submitted_at. Combined pagination and sorting works seamlessly. All parameters properly handled and responses correctly filtered and ordered."
+
+  - task: "Response Analytics Endpoint"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented new GET /api/surveys/{id}/responses/stats endpoint providing comprehensive analytics including total responses, question-wise completion rates, option distribution for multiple choice, and average ratings"
+      - working: true
+        agent: "testing"
+        comment: "✅ ALL RESPONSE ANALYTICS TESTS PASSED (9/9): Successfully tested GET /api/surveys/{id}/responses/stats endpoint. Analytics correctly calculate total responses count, question-wise completion rates (0-100%), option distribution for multiple choice questions with proper counts, and average ratings for rating questions. Proper error handling for non-existent surveys (404). Analytics work correctly even with zero responses. All statistical calculations are accurate and properly formatted."
+
 frontend:
   - task: "Survey Builder Interface"
     implemented: true
