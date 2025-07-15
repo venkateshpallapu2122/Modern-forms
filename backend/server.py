@@ -146,9 +146,73 @@ async def submit_response(response_data: SurveyResponseCreate):
     return response_obj
 
 @api_router.get("/surveys/{survey_id}/responses", response_model=List[SurveyResponse])
-async def get_survey_responses(survey_id: str):
-    responses = await db.responses.find({"survey_id": survey_id}).to_list(1000)
+async def get_survey_responses(survey_id: str, page: int = 1, limit: int = 100, sort_by: str = "submitted_at", sort_order: str = "desc"):
+    # Calculate skip value for pagination
+    skip = (page - 1) * limit
+    
+    # Define sort order
+    sort_direction = -1 if sort_order == "desc" else 1
+    
+    # Get responses with pagination and sorting
+    responses = await db.responses.find({"survey_id": survey_id}).sort(sort_by, sort_direction).skip(skip).limit(limit).to_list(limit)
+    
     return [SurveyResponse(**response) for response in responses]
+
+@api_router.get("/surveys/{survey_id}/responses/stats")
+async def get_survey_response_stats(survey_id: str):
+    # Get total response count
+    total_responses = await db.responses.count_documents({"survey_id": survey_id})
+    
+    # Get survey details
+    survey = await db.surveys.find_one({"id": survey_id})
+    if not survey:
+        raise HTTPException(status_code=404, detail="Survey not found")
+    
+    # Calculate completion rate and other stats
+    responses = await db.responses.find({"survey_id": survey_id}).to_list(1000)
+    
+    # Calculate question-wise response stats
+    question_stats = {}
+    for question in survey.get("questions", []):
+        question_id = question["id"]
+        answered_count = 0
+        response_data = []
+        
+        for response in responses:
+            if question_id in response.get("responses", {}):
+                answered_count += 1
+                response_data.append(response["responses"][question_id])
+        
+        completion_rate = (answered_count / total_responses * 100) if total_responses > 0 else 0
+        
+        # For multiple choice questions, calculate option distribution
+        option_distribution = {}
+        if question["type"] == "multiple_choice":
+            for resp in response_data:
+                if resp:
+                    option_distribution[resp] = option_distribution.get(resp, 0) + 1
+        
+        # For rating questions, calculate average
+        average_rating = None
+        if question["type"] == "rating":
+            numeric_responses = [r for r in response_data if isinstance(r, (int, float))]
+            if numeric_responses:
+                average_rating = sum(numeric_responses) / len(numeric_responses)
+        
+        question_stats[question_id] = {
+            "question_title": question["title"],
+            "question_type": question["type"],
+            "answered_count": answered_count,
+            "completion_rate": completion_rate,
+            "option_distribution": option_distribution,
+            "average_rating": average_rating
+        }
+    
+    return {
+        "total_responses": total_responses,
+        "survey_title": survey["title"],
+        "question_stats": question_stats
+    }
 
 # Initialize default templates
 @api_router.post("/init-templates")
